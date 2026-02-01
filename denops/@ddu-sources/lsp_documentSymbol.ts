@@ -118,9 +118,6 @@ function parseResult(
   ) => {
     for (const symbol of symbols) {
       const item = symbolToItem(symbol, parentPath, context);
-      if (isDucumentSymbol(symbol) && symbol.children) {
-        setItems(item.treePath as string[], symbol.children);
-      }
       if (isValidItem(item)) {
         items.push(item);
       }
