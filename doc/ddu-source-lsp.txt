@@ -251,6 +251,24 @@ locationPaddingWidth (number)
 
 	Default: 30
 
+				*ddu-source-lsp-params-displayContainerName*
+displayContainerName (boolean)
+	Available in |ddu-source-lsp_documentSymbol| and
+	|ddu-source-lsp_workspaceSymbol|.
+	Whether to show the container name (e.g. the class which the symbol
+	method belongs to) at the end of the item line.
+
+	Default: false
+
+				*ddu-source-lsp-params-symbolNameWidth*
+symbolNameWidth (number)
+	Available in |ddu-source-lsp_documentSymbol| and
+	|ddu-source-lsp_workspaceSymbol|.
+	The width used to pad the symbol name when |displayContainerName| is
+	enabled.
+
+	Default: 30
+
 					*ddu-source-lsp-params-query*
 query	(string)
 	Available in |ddu-source-lsp_workspaceSymbol|.

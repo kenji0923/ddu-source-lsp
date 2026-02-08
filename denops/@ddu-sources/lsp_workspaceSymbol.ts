@@ -19,6 +19,8 @@ export type ActionWorkspaceSymbol = SomePartial<ActionData, "range">;
 type Params = {
   clientName: ClientName | "";
   query: string;
+  displayContainerName: boolean;
+  symbolNameWidth: number;
 };
 
 export class Source extends BaseSource<Params> {
@@ -33,7 +35,7 @@ export class Source extends BaseSource<Params> {
     parent?: DduItem;
   }): ReadableStream<Item<ActionWorkspaceSymbol>[]> {
     const { denops, sourceOptions, sourceParams, context: ctx } = args;
-    const { query } = sourceParams;
+    const { query, displayContainerName, symbolNameWidth } = sourceParams;
     const method: Method = "workspace/symbol";
 
     return new ReadableStream({
@@ -53,7 +55,14 @@ export class Source extends BaseSource<Params> {
               params,
               ctx.bufNr,
             );
-            const items = parseResult(result, client, ctx.bufNr, method);
+            const items = parseResult(
+              result,
+              client,
+              ctx.bufNr,
+              method,
+              displayContainerName,
+              symbolNameWidth,
+            );
             controller.enqueue(items);
           }));
         } catch (e) {
@@ -69,6 +78,8 @@ export class Source extends BaseSource<Params> {
     return {
       clientName: "",
       query: "",
+      displayContainerName: false,
+      symbolNameWidth: 30,
     };
   }
 }
@@ -78,6 +89,8 @@ function parseResult(
   client: Client,
   bufNr: number,
   method: Method,
+  displayContainerName: boolean,
+  symbolNameWidth: number,
 ): Item<ActionWorkspaceSymbol>[] {
   /**
    * Reference:
@@ -97,8 +110,11 @@ function parseResult(
     .map((symbol) => {
       const kindName = KindName[symbol.kind];
       const kind = `[${kindName}]`.padEnd(15, " ");
+      const name = displayContainerName && symbol.containerName
+        ? `${symbol.name.padEnd(symbolNameWidth)} [${symbol.containerName}]`
+        : symbol.name;
       return {
-        word: `${kind} ${symbol.name}`,
+        word: `${kind} ${name}`,
         action: {
           path: uriToFname(symbol.location.uri),
           range: "range" in symbol.location ? symbol.location.range : undefined,
