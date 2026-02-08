@@ -234,6 +234,23 @@ includeDeclaration (boolean)
 
 	Default: true
 
+					*ddu-source-lsp-params-showLine*
+showLine (boolean)
+	Available in |ddu-source-lsp_references|.
+	Whether to show the line content of found references.
+	Note: Enabling this option may slow down the source because it needs
+	to read files to get the line content.
+
+	Default: false
+
+				*ddu-source-lsp-params-locationPaddingWidth*
+locationPaddingWidth (number)
+	Available in |ddu-source-lsp_references|.
+	If showLine is enabled, add spaces padding to the location text so
+	that resulting location part has the width of this number.
+
+	Default: 30
+
 					*ddu-source-lsp-params-query*
 query	(string)
 	Available in |ddu-source-lsp_workspaceSymbol|.
