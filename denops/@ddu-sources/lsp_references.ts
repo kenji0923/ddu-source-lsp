@@ -2,7 +2,7 @@ import { BaseSource, Context, DduItem, Denops, Item, LSP } from "../ddu_source_l
 import { lspRequest, LspResult, Method } from "../ddu_source_lsp/request.ts";
 import { Client, ClientName, getClientName, getClients } from "../ddu_source_lsp/client.ts";
 import { makePositionParams, TextDocumentPositionParams } from "../ddu_source_lsp/params.ts";
-import { getCwd, locationToItem, printError } from "../ddu_source_lsp/util.ts";
+import { getCwd, locationToItem, printError, uriToFname } from "../ddu_source_lsp/util.ts";
 import { ActionData } from "../@ddu-kinds/lsp.ts";
 import { isValidItem } from "../ddu_source_lsp/handler.ts";
 
@@ -13,6 +13,7 @@ type ReferenceParams = TextDocumentPositionParams & {
 type Params = {
   clientName: ClientName | "";
   includeDeclaration: boolean;
+  showLine: boolean;
 };
 
 export class Source extends BaseSource<Params> {
@@ -26,7 +27,7 @@ export class Source extends BaseSource<Params> {
     parent?: DduItem;
   }): ReadableStream<Item<ActionData>[]> {
     const { denops, sourceParams, context: ctx } = args;
-    const { includeDeclaration } = sourceParams;
+    const { includeDeclaration, showLine, locationPaddingWidth } = sourceParams;
     const method: Method = "textDocument/references";
 
     return new ReadableStream({
@@ -51,7 +52,7 @@ export class Source extends BaseSource<Params> {
               params,
               ctx.bufNr,
             );
-            const items = parseResult(result, client, ctx.bufNr, method, cwd);
+            const items = await parseResult(result, client, ctx.bufNr, method, cwd, denops, showLine, locationPaddingWidth);
             controller.enqueue(items);
           }));
         } catch (e) {
@@ -67,17 +68,22 @@ export class Source extends BaseSource<Params> {
     return {
       clientName: "",
       includeDeclaration: true,
+      showLine: false,
+      locationPaddingWidth: 30
     };
   }
 }
 
-function parseResult(
+async function parseResult(
   result: LspResult,
   client: Client,
   bufNr: number,
   method: Method,
   cwd: string,
-): Item<ActionData>[] {
+  denops: Denops,
+  showLine: boolean,
+  locationPaddingWidth: number
+): Promise<Item<ActionData>[]> {
   /**
    * Reference:
    * https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_references
@@ -89,7 +95,32 @@ function parseResult(
 
   const context = { client, bufNr, method };
 
+  // Fetch unique files
+  const fileContents = new Map<string, string[]>();
+  if (showLine) {
+    for (const loc of locations) {
+      const path = uriToFname(loc.uri);
+      if (!fileContents.has(path)) {
+        if (await denops.call("bufloaded", path)) {
+          fileContents.set(path, await denops.call("getbufline", path, 1, "$") as string[]);
+        } else {
+          try {
+            fileContents.set(path, await denops.call("readfile", path) as string[]);
+          } catch {
+            fileContents.set(path, []);
+          }
+        }
+      }
+    }
+  }
+
   return locations
-    .map((location) => locationToItem(location, cwd, context))
+    .map((location) => {
+      const path = uriToFname(location.uri);
+      const line = location.range.start.line;
+      const content = fileContents.get(path);
+      const text = content && content[line] ? content[line].trim() : null;
+      return locationToItem(location, cwd, context, text, locationPaddingWidth);
+    })
     .filter(isValidItem);
 }

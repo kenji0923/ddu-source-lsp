@@ -30,6 +30,8 @@ export function locationToItem(
   location: LSP.Location | LSP.LocationLink,
   cwd: string,
   context: ItemContext,
+  text: string | null = null,
+  loc_padding: int | null = null
 ) {
   const uri = "uri" in location ? location.uri : location.targetUri;
   const range = "range" in location ? location.range : location.targetSelectionRange;
@@ -37,9 +39,12 @@ export function locationToItem(
   const relativePath = relative(cwd, path);
   const { line, character } = range.start;
   const [lineNr, col] = [line + 1, character + 1];
+  const display_loc = `${relativePath}:${lineNr}:${col}`
+  const is_loc_padding_valid = Number.isInteger(loc_padding) && loc_padding > 0
+  const display = text ? (is_loc_padding_valid ? display_loc.padEnd(loc_padding) + ` ${text}` : display_loc + `  ${text}`) : display_loc;
   return {
     word: relativePath,
-    display: `${relativePath}:${lineNr}:${col}`,
+    display,
     action: { path, range, context },
     data: location,
   };
